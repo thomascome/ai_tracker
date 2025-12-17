@@ -1,18 +1,18 @@
-#include "ModelInference.h"
-#include "StreamDecode.h"
-#include "StreamEncode.h"
-#include "Configuration.h"
-#include "DecodeQueue.h"
-
 #include <getopt.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <iostream>
 #include <memory>
 #include <string>
-#include <vector>
 #include <thread>
-#include <sys/stat.h>
+#include <vector>
 
-#include <unistd.h>
+#include "Configuration.h"
+#include "DecodeQueue.h"
+#include "ModelInference.h"
+#include "StreamDecode.h"
+#include "StreamEncode.h"
 
 using namespace std;
 
@@ -39,8 +39,8 @@ shared_ptr<CaptureController> captureCtrl;
 /** @brief  Call encoder control to save the output
  * @param solution_config Solution information parsed from config.json
  */
-static void OnNotifyResult(shared_ptr<DetectionItem> &item, SolutionConfiguration* solution_config)
-{
+static void OnNotifyResult(shared_ptr<DetectionItem> &item,
+                           SolutionConfiguration *solution_config) {
     cv::Mat img(item->Height, item->Width, CV_8UC3, item->ImageBuffer.get());
     int size = img.total() * img.elemSize();
     encoderCtrl->EncodeFrame(item->StreamId, img.data, size);
@@ -49,10 +49,8 @@ static void OnNotifyResult(shared_ptr<DetectionItem> &item, SolutionConfiguratio
 /** @brief To handle user interrupt
  * @param sig signal value of the interrupt
 */
-static void InterruptHandler(int sig)
-{
-    if (sig == SIGINT)
-    {
+static void InterruptHandler(int sig) {
+    if (sig == SIGINT) {
         captureCtrl->InterruptClose();
         LOG_DEBUG("captureCtrl exit \n");
 
@@ -60,15 +58,13 @@ static void InterruptHandler(int sig)
         gExit = true;
 
         LOG_DEBUG("gDecodeQueue Unlock\n");
-        
+
         usleep(200 * 1000);
         LOG_INFO("Exit sleep\n");
         encoderCtrl->InterruptClose();
         LOG_INFO("InterruptHandler exit\n");
         exit(0);
-    }
-    else
-    {
+    } else {
         exit(1);
     }
 }
@@ -76,8 +72,7 @@ static void InterruptHandler(int sig)
 /** @brief To intialize and configure the runtime based on the solution
  * @param sol_conf contains information about the solution 
 */
-void InferenceThread(void *sol_conf)
-{
+void InferenceThread(void *sol_conf) {
     LOG_DEBUG("InferenceThread \n");
 
     SolutionConfiguration *solution_config = (SolutionConfiguration *)sol_conf;
@@ -87,7 +82,7 @@ void InferenceThread(void *sol_conf)
     */
     shared_ptr<ModelInference> shInference;
     shInference = std::make_shared<ModelInference>(solution_config->model_config->model_type);
-    
+
     /**
      * To set callback function
     */
@@ -97,31 +92,26 @@ void InferenceThread(void *sol_conf)
     int ret = 0;
     auto start = chrono::steady_clock::now();
     uint32_t frames = 0;
-    
+
     /**
      * Run the loop until stream ends or interrupt from user
     */
-    do
-    {
+    do {
         auto start1 = chrono::steady_clock::now();
         shared_ptr<DetectionItem> item;
         ret = gDecodeQueue->Dequeue(item, 300);
         /**
          * Check if Dequeue is successful
         */
-        if (ret == 0)
-        {
+        if (ret == 0) {
             frames += 1;
             shInference->Inference(item);
             auto end1 = chrono::steady_clock::now();
             auto costTime1 = chrono::duration_cast<chrono::milliseconds>(end1 - start1).count();
-            LOG_INFO("Elapsed inference time in milliseconds: %ld ms\n",costTime1);
+            LOG_INFO("Elapsed inference time in milliseconds: %ld ms\n", costTime1);
             OnNotifyResult(item, solution_config);
-        }
-        else
-        {
-            if (ret != 1)
-            {
+        } else {
+            if (ret != 1) {
                 LOG_ERROR("Error ret= %d", ret);
             }
             continue;
@@ -134,8 +124,7 @@ void InferenceThread(void *sol_conf)
     */
     auto remains = gDecodeQueue->GetRemainItems();
     LOG_INFO("Remain Items= %lu\n", remains.size());
-    for (auto item : remains)
-    {
+    for (auto item : remains) {
         frames += 1;
         shInference->Inference(item);
         OnNotifyResult(item, solution_config);
@@ -149,38 +138,37 @@ void InferenceThread(void *sol_conf)
     auto end = chrono::steady_clock::now();
     auto costTime = chrono::duration_cast<chrono::milliseconds>(end - start).count();
 
-    LOG_INFO("Elapsed time in milliseconds: %ld ms \t Received Frames: %d \t Through rate: %ld \n", 
-    costTime, frames, (frames * 1000)/costTime);
+    LOG_INFO("Elapsed time in milliseconds: %ld ms \t Received Frames: %d \t Through rate: %ld \n",
+             costTime, frames, (frames * 1000) / costTime);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     gExit = false;
-    const char* inputFile;
+    const char *inputFile;
     int opt = 0;
-    while ((opt = getopt(argc, argv, ":hc:")) != -1)
-    {
-        switch (opt)
-        {
-            case 'h': std::cout
-                        << "\nDESCRIPTION:\n"
-                        << "------------\n"
-                        << "Example application demonstrating how to run the use case\n"
-                        << "using the SNPE C++ API.\n"
-                        << "REQUIRED ARGUMENTS:\n"
-                        << "-------------------\n"
-                        << "  -c  <FILE>   Path to the config json file.\n"
-                        << "Example: ./out/main -c ../data/config.json\n";
+    while ((opt = getopt(argc, argv, ":hc:")) != -1) {
+        switch (opt) {
+            case 'h':
+                std::cout << "\nDESCRIPTION:\n"
+                          << "------------\n"
+                          << "Example application demonstrating how to run the use case\n"
+                          << "using the SNPE C++ API.\n"
+                          << "REQUIRED ARGUMENTS:\n"
+                          << "-------------------\n"
+                          << "  -c  <FILE>   Path to the config json file.\n"
+                          << "Example: " << argv[0] << " -c ../data/config.json\n";
+                return 1;
             case 'c':
-                    inputFile = optarg;
-                    LOG_INFO("Path to config file = %s \n", inputFile);
-                    break;
+                inputFile = optarg;
+                LOG_INFO("Path to config file = %s \n", inputFile);
+                break;
             default:
-                LOG_INFO("Invalid parameter specified. Please run sample with the -h flag to see required arguments\n");
-                exit(0);
+                LOG_INFO("Invalid parameter specified. Please run sample with the -h flag to see "
+                         "required arguments\n");
+                return 1;
         };
     }
- 
+
     /**
      * To parse input,model and solution config from inputFile
     */
@@ -199,17 +187,20 @@ int main(int argc, char **argv)
      * To intialize each enabled solution
     */
     for (auto i : Configuration::getInstance().solutionsconfig) {
-         std::shared_ptr<SolutionConfiguration> config = i.second;
-         if (config->Enable == true) {
-            config->input_config = Configuration::getInstance().inputconfigs[config->input_config_name];
+        std::shared_ptr<SolutionConfiguration> config = i.second;
+        if (config->Enable == true) {
+            config->input_config =
+                Configuration::getInstance().inputconfigs[config->input_config_name];
             if (config->input_config == NULL) {
-                LOG_ERROR("NULL Input configuration for selected solution name = %s \n", config->solution_name.c_str());
+                LOG_ERROR("NULL Input configuration for selected solution name = %s \n",
+                          config->solution_name.c_str());
                 exit(1);
             }
             config->input_config->StreamNumber = i.first;
             config->model_config = Configuration::getInstance().modelsconfig[config->model_name];
             if (config->model_config == NULL) {
-                LOG_ERROR("NULL Model configuration for selected solution name = %s \n", config->solution_name.c_str());
+                LOG_ERROR("NULL Model configuration for selected solution name = %s \n",
+                          config->solution_name.c_str());
                 exit(1);
             }
             solutions_config.emplace_back(*config);
@@ -225,9 +216,8 @@ int main(int argc, char **argv)
     }
 
     std::thread inferThread[selected_model.size()];
-    for (unsigned int i=0; i<selected_model.size(); i++) {
+    for (unsigned int i = 0; i < selected_model.size(); i++) {
         inferThread[i] = std::thread(InferenceThread, (void *)(&solutions_config[i]));
-
     }
 
     signal(SIGINT, InterruptHandler);
@@ -235,8 +225,8 @@ int main(int argc, char **argv)
     /**
      * To stop gstreamer pipeline
     */
-    for (unsigned int i=0; i<solutions_config.size(); i++) {
-       captureCtrl->StopAll();
+    for (unsigned int i = 0; i < solutions_config.size(); i++) {
+        captureCtrl->StopAll();
     }
 
     /**
@@ -248,7 +238,7 @@ int main(int argc, char **argv)
     /**
      * Wait for all the threads to finish
     */
-    for (unsigned int i=0; i<solutions_config.size(); i++) {
+    for (unsigned int i = 0; i < solutions_config.size(); i++) {
         inferThread[i].join();
         encoderCtrl->Stop();
     }
