@@ -1,12 +1,6 @@
-cmake_minimum_required(VERSION 3.5.1)
-
-
-# Compile options
-add_compile_options(-std=c++11)
 
 set(AI_TRACKER_NAME "ai_tracker")
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  "../out")
 set(CMAKE_CXX_FLAGS_DEBUG "-fPIC -O0 -g -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "-fPIC -O2 -Wall")
 
@@ -26,32 +20,34 @@ add_executable(${AI_TRACKER_NAME} ${SRC_FILE})
 target_compile_options(${AI_TRACKER_NAME} PUBLIC -fPIC  -O0 -g -Wall -Wnon-virtual-dtor)
 
 find_package(Protobuf REQUIRED)
+find_package(OpenCV REQUIRED )
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
 pkg_check_modules(GSTREAMER_APP REQUIRED gstreamer-app-1.0)
+pkg_check_modules(JSONCPP REQUIRED jsoncpp)
+pkg_check_modules(JSON REQUIRED json-glib-1.0)
 pkg_check_modules(OPENCV REQUIRED opencv4)
 
-
 # Header path
-include_directories(
-    "../inc"
-    "/usr/include/glib-2.0"
-    "/usr/lib/aarch64-linux-gnu/glib-2.0/include"
+target_include_directories(${AI_TRACKER_NAME} PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/../inc
     ${GSTREAMER_INCLUDE_DIRS}
     ${GSTREAMER_APP_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${SNPE_INCDIR}
     ${JSON_INCLUDE_DIRS}
     ${JSONCPP_INCLUDE_DIRS}
-    "/usr/local/include/eigen3"
 )
 
-message(${JSON_INCLUDE_DIRS})
-message(${JSONCPP_INCLUDE_DIRS})
-
-target_link_libraries(${AI_TRACKER_NAME} PUBLIC pthread dl 
-                     opencv_core
-                     opencv_imgproc
-                      ${GST_APP_LIBRARIES} ${JSON_LIBRARIES} jsoncpp SNPE jsoncpp ${Protobuf_LIBRARIES})
+target_link_libraries(${AI_TRACKER_NAME} PUBLIC 
+                      pthread dl
+                      opencv_core
+                      opencv_imgproc
+                      ${GSTREAMER_LIBRARIES}
+                      ${GSTREAMER_APP_LIBRARIES}
+                      ${JSON_LIBRARIES}
+                      jsoncpp 
+                      SNPE
+                      ${Protobuf_LIBRARIES})
 
 install(TARGETS ${AI_TRACKER_NAME} RUNTIME DESTINATION "bin")
