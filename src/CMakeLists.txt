@@ -4,6 +4,8 @@ cmake_minimum_required(VERSION 3.5.1)
 # Compile options
 add_compile_options(-std=c++11)
 
+set(AI_TRACKER_NAME "ai_tracker")
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  "../out")
 set(CMAKE_CXX_FLAGS_DEBUG "-fPIC -O0 -g -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "-fPIC -O2 -Wall")
@@ -20,8 +22,8 @@ set(SOURCE_FILE
 
 set(SNPE_INCDIR ${SNPE_SDK_BASE_DIR}/include/zdl)
 
-add_executable(main ${SRC_FILE})
-target_compile_options(main PUBLIC -fPIC  -O0 -g -Wall -Wnon-virtual-dtor)
+add_executable(${AI_TRACKER_NAME} ${SRC_FILE})
+target_compile_options(${AI_TRACKER_NAME} PUBLIC -fPIC  -O0 -g -Wall -Wnon-virtual-dtor)
 
 find_package(Protobuf REQUIRED)
 find_package(PkgConfig REQUIRED)
@@ -47,6 +49,9 @@ include_directories(
 message(${JSON_INCLUDE_DIRS})
 message(${JSONCPP_INCLUDE_DIRS})
 
-target_link_libraries(main PUBLIC pthread dl opencv_core
+target_link_libraries(${AI_TRACKER_NAME} PUBLIC pthread dl 
+                     opencv_core
                      opencv_imgproc
                       ${GST_APP_LIBRARIES} ${JSON_LIBRARIES} jsoncpp SNPE jsoncpp ${Protobuf_LIBRARIES})
+
+install(TARGETS ${AI_TRACKER_NAME} RUNTIME DESTINATION "bin")

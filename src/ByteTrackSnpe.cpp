@@ -144,7 +144,7 @@ bool ByteTrackSnpe::PreProcessInput(const cv::Mat &input_image) {
         }
     }
 
-    input = cv::dnn::blobFromImage(input);
+    // input = cv::dnn::blobFromImage(input);
     LOG_DEBUG("End of preprocess \n");
 
     return true;
